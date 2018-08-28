@@ -1,5 +1,6 @@
 require("dotenv").config();
-//Loading modules
+
+
 var Twitter = require('twitter');
 var spotify = require('spotify');
 var request = require('request');
@@ -25,25 +26,22 @@ var client = new Twitter({
 
 
 
-//-----------------------FUNCTIONS-----------------------------------------------
-
-//This function processes the input commands
 function processCommands(command, commandParam){
 
-	//console.log(commandParam);
+	
 
 	switch(command){
 
 	case 'my-tweets':
 		getMyTweets(); break;
 	case 'spotify-this-song':
-		//If user has not specified a song , use default
+		
 		if(commandParam === undefined){
 			commandParam = defaultSong;
 		}     
 		spotifyThis(commandParam); break;
 	case 'movie-this':
-		//If user has not specified a movie Name , use default
+		
 		if(commandParam === undefined){
 			commandParam = defaultMovie;
 		}    
@@ -62,7 +60,7 @@ function getMyTweets(){
 	var params = {screen_name: 'jincygeorge8388', count: 20, exclude_replies:true, trim_user:true};
 		client.get('statuses/user_timeline', params, function(error, tweets, response) {
 				if (!error) {
-					//console.log(tweets);
+				
 					tweetsArray = tweets;
 
 					for(i=0; i<tweetsArray.length; i++){
@@ -80,9 +78,9 @@ function getMyTweets(){
 
 function spotifyThis(song){
 
-	//If user has not specified a song , default to "Radioactive" imagine dragons
+
 	if(song === ""){
-		song = "Radioactive";
+		song = "Radioactive"; //imagine dragons
 	}
 
 	spotify.search({ type: 'track', query: song}, function(err, data) {
@@ -116,16 +114,11 @@ function movieThis(movieName){
 
 	request("https://api.themoviedb.org/3/search/movie?api_key=" + tmdbKey + "&query=" + movieName, function(error, response, body) {
 
-  	// If there were no errors and the response code was 200 (i.e. the request was successful)...
+  	
   	if (!error && response.statusCode === 200) {
 
-	    //console.log(JSON.parse(body));
-	    
-	    //Get the Movie ID
 	    var movieID =  JSON.parse(body).results[0].id;
-	    //console.log(movieID);
-
-	    //Create new query using the movie ID
+	    
 	    var queryURL = "https://api.themoviedb.org/3/movie/" + movieID + "?api_key=" + tmdbKey + "&append_to_response=credits,releases";
 
 	    request(queryURL, function(error, response, body) {
@@ -181,6 +174,5 @@ function doWhatItSays(){
 
 
 
-//-------------------------MAIN PROCESS-------------------------------------------
 
 processCommands(inputCommand, commandParam);
