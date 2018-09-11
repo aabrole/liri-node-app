@@ -1,178 +1,168 @@
+// DEPENDENCIES
+// =====================================
+// Read and set environment variables
 require("dotenv").config();
 
+// Import the Twitter NPM package.
+// var Twitter = require("twitter");
 
-var Twitter = require('twitter');
-var spotify = require('spotify');
-var request = require('request');
-var fs = require('fs');
-var keys = require("./keys.js");
-var tweetsArray = [];
-var inputCommand = process.argv[2];
-var commandParam = process.argv[3];
-var defaultMovie = "Ex Machina";
-var defaultSong = "Radioactive";
+// Import the node-spotify-api NPM package.
+var Spotify = require("node-spotify-api");
 
+// Import the API keys
+var keys = require("./keys");
 
+// Import the request npm package.
+var request = require("request");
 
-var twitterKeys = keys.twitterKeys;
-var tmdbKey = keys.tmdbKey;
+// Import the moment npm package.
+var moment = require("moment");
 
-var client = new Twitter({
-  consumer_key: twitterKeys.consumer_key,
-  consumer_secret: twitterKeys.consumer_secret,
-  access_token_key: twitterKeys.access_token_key,
-  access_token_secret: twitterKeys.access_token_secret
-});
+// Import the FS package for read/write.
+var fs = require("fs");
 
+// Initialize the spotify API client using our client id and secret
+var spotify = new Spotify(keys.spotify);
 
+// FUNCTIONS
+// =====================================
 
-function processCommands(command, commandParam){
+// Writes to the log.txt file
+var getArtistNames = function(artist) {
+  return artist.name;
+};
 
-	
+// Function for running a Spotify search
+var getMeSpotify = function(songName) {
+  if (songName === undefined) {
+    songName = "What's my age again";
+  }
 
-	switch(command){
-
-	case 'my-tweets':
-		getMyTweets(); break;
-	case 'spotify-this-song':
-		
-		if(commandParam === undefined){
-			commandParam = defaultSong;
-		}     
-		spotifyThis(commandParam); break;
-	case 'movie-this':
-		
-		if(commandParam === undefined){
-			commandParam = defaultMovie;
-		}    
-		movieThis(commandParam); break;
-	case 'do-what-it-says':
-		doWhatItSays(); break;
-	default: 
-		console.log("Invalid command. Please type any of the following commnds: my-tweets spotify-this-song movie-this or do-what-it-says");
-}
-
-
-}
-
-function getMyTweets(){
-
-	var params = {screen_name: 'jincygeorge8388', count: 20, exclude_replies:true, trim_user:true};
-		client.get('statuses/user_timeline', params, function(error, tweets, response) {
-				if (!error) {
-				
-					tweetsArray = tweets;
-
-					for(i=0; i<tweetsArray.length; i++){
-						console.log("Created at: " + tweetsArray[i].created_at);
-						console.log("Text: " + tweetsArray[i].text);
-						console.log('--------------------------------------');
-					}
-				}
-				else{
-					console.log(error);
-				}
-	});
-
-}
-
-function spotifyThis(song){
-
-
-	if(song === ""){
-		song = "Radioactive"; //imagine dragons
-	}
-
-	spotify.search({ type: 'track', query: song}, function(err, data) {
-    if (err) {
-        console.log('Error occurred: ' + err);
+  spotify.search(
+    {
+      type: "track",
+      query: songName
+    },
+    function(err, data) {
+      if (err) {
+        console.log("Error occurred: " + err);
         return;
+      }
+
+      var songs = data.tracks.items;
+
+      for (var i = 0; i < songs.length; i++) {
+        console.log(i);
+        console.log("artist(s): " + songs[i].artists.map(getArtistNames));
+        console.log("song name: " + songs[i].name);
+        console.log("preview song: " + songs[i].preview_url);
+        console.log("album: " + songs[i].album.name);
+        console.log("-----------------------------------");
+      }
     }
+  );
+};
 
-    var song = data.tracks.items[0];
-    console.log("------Artists-----");
-    for(i=0; i<song.artists.length; i++){
-    	console.log(song.artists[i].name);
+var getMyBands = function(artist) {
+  var queryURL = "https://rest.bandsintown.com/artists/" + artist + "/events?app_id=codingbootcamp";
+
+  request(queryURL, function(error, response, body) {
+    if (!error && response.statusCode === 200) {
+      var jsonData = JSON.parse(body);
+
+      if (!jsonData.length) {
+        console.log("No results found for " + artist);
+        return;
+      }
+
+      console.log("Upcoming concerts for " + artist + ":");
+
+      for (var i = 0; i < jsonData.length; i++) {
+        var show = jsonData[i];
+
+        // Print data about each concert
+        // If a concert doesn't have a region, display the country instead
+        // Use moment to format the date
+        console.log(
+          show.venue.city +
+            "," +
+            (show.venue.region || show.venue.country) +
+            " at " +
+            show.venue.name +
+            " " +
+            moment(show.datetime).format("MM/DD/YYYY")
+        );
+      }
     }
+  });
+};
 
-    console.log("------Song Name-----");
-    console.log(song.name);
+// Function for running a Movie Search
+var getMeMovie = function(movieName) {
+  if (movieName === undefined) {
+    movieName = "Mr Nobody";
+  }
 
-	console.log("-------Preview Link-----");
-    console.log(song.preview_url);
+  var urlHit =
+    "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=full&tomatoes=true&apikey=trilogy";
 
-    console.log("-------Album-----");
-    console.log(song.album.name);
+  request(urlHit, function(error, response, body) {
+    if (!error && response.statusCode === 200) {
+      var jsonData = JSON.parse(body);
 
-	});
+      console.log("Title: " + jsonData.Title);
+      console.log("Year: " + jsonData.Year);
+      console.log("Rated: " + jsonData.Rated);
+      console.log("IMDB Rating: " + jsonData.imdbRating);
+      console.log("Country: " + jsonData.Country);
+      console.log("Language: " + jsonData.Language);
+      console.log("Plot: " + jsonData.Plot);
+      console.log("Actors: " + jsonData.Actors);
+      console.log("Rotten Tomatoes Rating: " + jsonData.Ratings[1].Value);
+    }
+  });
+};
 
-}
+// Function for running a command based on text file
+var doWhatItSays = function() {
+  fs.readFile("random.txt", "utf8", function(error, data) {
+    console.log(data);
 
-function movieThis(movieName){
+    var dataArr = data.split(",");
 
-	console.log(movieName);
+    if (dataArr.length === 2) {
+      pick(dataArr[0], dataArr[1]);
+    } else if (dataArr.length === 1) {
+      pick(dataArr[0]);
+    }
+  });
+};
 
-	request("https://api.themoviedb.org/3/search/movie?api_key=" + tmdbKey + "&query=" + movieName, function(error, response, body) {
+// Function for determining which command is executed
+var pick = function(caseData, functionData) {
+  switch (caseData) {
+  case "concert-this":
+    getMyBands(functionData);
+    break;
+  case "spotify-this-song":
+    getMeSpotify(functionData);
+    break;
+  case "movie-this":
+    getMeMovie(functionData);
+    break;
+  case "do-what-it-says":
+    doWhatItSays();
+    break;
+  default:
+    console.log("LIRI doesn't know that");
+  }
+};
 
-  	
-  	if (!error && response.statusCode === 200) {
+// Function which takes in command line arguments and executes correct function accordingly
+var runThis = function(argOne, argTwo) {
+  pick(argOne, argTwo);
+};
 
-	    var movieID =  JSON.parse(body).results[0].id;
-	    
-	    var queryURL = "https://api.themoviedb.org/3/movie/" + movieID + "?api_key=" + tmdbKey + "&append_to_response=credits,releases";
-
-	    request(queryURL, function(error, response, body) {
-	    	var movieObj = JSON.parse(body);
-
-	    	console.log("--------Title-----------");
-	    	console.log(movieObj.original_title);
-
-	    	console.log("--------Year -----------");
-	    	console.log(movieObj.release_date.substring(0,4));
-
-	   		console.log("--------Rating-----------");
-	   		console.log(movieObj.releases.countries[0].certification);
-
-	   		console.log("--------Country Produced-----------");
-	   		for(i=0, j = movieObj.production_countries.length; i<j; i++){
-	   			console.log(movieObj.production_countries[i].name);
-	   		}
-	   		console.log("--------Languages-----------");
-	   		for(i=0, j = movieObj.spoken_languages.length; i<j; i++){
-	   			console.log(movieObj.spoken_languages[i].name);
-	   		}
-	   		console.log("--------Plot----------------");
-	   		console.log(movieObj.overview);
-
-	   		console.log("--------Actors-----------");
-	   		for(i=0, j = movieObj.credits.cast.length; i<j; i++){
-	   			console.log(movieObj.credits.cast[i].name);
-	   		}
-	    	
-	    });
-
-
-  	}else{
-  		console.log(error);
-  	}
-
-	});
-}
-
-function doWhatItSays(){
-	fs.readFile('random.txt', 'utf8', function(err, data){
-
-		if (err){ 
-			return console.log(err);
-		}
-
-		var dataArr = data.split(',');
-
-		processCommands(dataArr[0], dataArr[1]);
-	});
-}
-
-
-
-
-processCommands(inputCommand, commandParam);
+// MAIN PROCESS
+// =====================================
+runThis(process.argv[2], process.argv.slice(3).join(" "));
